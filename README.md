@@ -2,7 +2,7 @@
 DayDash is a one-page daily dashboard that runs locally in the browser. It provides quick access to notes, tasks, appointments, health info, weather, news headlines, and your favorite links—everything you need for your day, in one clean, responsive, modern interface.
 
 Features
-Header with greeting and current date (e.g. “Hello — Tuesday, October 28, 2025”)
+Header with greeting and current date (e.g. “Hello — Tuesday, October 28, 2025”)<br>
 Notes: multiline textarea to write daily thoughts
 To-Do List: add tasks, mark as done, remove tasks
 Appointments: schedule events with date + time, view upcoming, delete
