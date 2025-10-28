@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Daily Dashboard — Free APIs</title>
+<style>
+  /* ---------- Theme variables ---------- */
+  :root{
+    --bg: #0b1220;
+    --panel: #0f1724;
+    --muted: #9fb0c8;
+    --text: #e6eef6;
+    --accent: #0a84ff;
+    --glass: rgba(255,255,255,0.03);
+    --radius: 12px;
+    --shadow: 0 8px 30px rgba(2,6,23,0.6);
+  }
+  :root.light{
+    --bg: linear-gradient(180deg,#f6f8fb,#eef4ff);
+    --panel: #ffffff;
+    --muted: #556777;
+    --text: #071226;
+    --accent: #0a84ff;
+    --glass: rgba(10,12,17,0.03);
+    --shadow: 0 10px 30px rgba(8,12,20,0.06);
+  }
+
+  /* ---------- Base ---------- */
+  html,body{height:100%;margin:0}
+  body{
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    background:var(--bg);
+    color:var(--text);
+    padding:22px;
+  }
+
+  /* ---------- Header ---------- */
+  .header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  .brand h1{margin:0;font-size:20px}
+  .brand p{margin:0;color:var(--muted);font-size:13px}
+  .controls{display:flex;gap:8px;align-items:center}
+
+  .btn{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:10px;cursor:pointer}
+  .small{font-size:13px;padding:6px 8px}
+
+  /* ---------- Layout (two-column) ---------- */
+  .grid{display:grid;gap:18px;grid-template-columns:1fr;align-items:start}
+  @media(min-width:900px){ .grid{grid-template-columns:1fr 380px} }
+
+  .left-col{display:grid;gap:18px}
+
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--panel);
+    padding:14px;border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid rgba(255,255,255,0.03);
+  }
+  .card h3{margin:0 0 10px 0;font-size:14px}
+  .muted{color:var(--muted);font-size:13px}
+
+  textarea{width:100%;min-height:120px;background:transparent;color:var(--text);border:1px dashed rgba(255,255,255,0.03);padding:10px;border-radius:8px;font-size:14px;resize:vertical}
+
+  /* lists */
+  .list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+  .item{display:flex;justify-content:space-between;align-items:center;padding:9px;border-radius:8px;background:var(--glass)}
+  .left{display:flex;align-items:center;gap:10px}
+  .title.done{ text-decoration:line-through; opacity:0.6 }
+
+  /* weather */
+  .weather {display:flex;gap:12px;align-items:center}
+  .hourly {display:flex;gap:8px;overflow:auto;padding-top:8px}
+  .hour{min-width:72px;padding:8px;border-radius:8px;background:var(--glass);text-align:center}
+
+  /* health */
+  .health-grid{display:flex;gap:10px;flex-wrap:wrap}
+  .health-card{flex:1 1 110px;padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);text-align:center}
+  .pct{font-weight:700;margin-top:6px;font-size:18px}
+
+  /* favorites */
+  .fav-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .fav-link{padding:8px 10px;border-radius:8px;background:var(--glass);text-decoration:none;color:inherit;font-size:13px;display:inline-flex;align-items:center;gap:8px}
+
+  input,select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text)}
+  .mutebtn{background:transparent;border:1px dashed rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;cursor:pointer}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{height:8px;width:8px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.04);border-radius:8px}
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <h1 id="greet">Hello —</h1>
+      <p id="dateStr" class="muted">Loading date…</p>
+    </div>
+
+    <div class="controls">
+      <label class="muted" for="modeToggle">Light</label>
+      <input id="modeToggle" type="checkbox" />
+      <button class="btn small" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="left-col">
+      <!-- Notes -->
+      <div class="card">
+        <h3>Notes</h3>
+        <textarea id="notes" placeholder="Write today's notes..."></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button class="btn small" id="saveNotes">Save</button>
+        </div>
+      </div>
+
+      <!-- To-do -->
+      <div class="card">
+        <h3>To-Do</h3>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input id="todoInput" placeholder="New task..." />
+          <button class="btn small" id="addTodo">Add</button>
+        </div>
+        <ul id="todos" class="list"></ul>
+      </div>
+
+      <!-- Appointments -->
+      <div class="card">
+        <h3>Appointments</h3>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <input id="apptTitle" placeholder="Title" style="flex:1" />
+          <input id="apptTime" type="datetime-local" />
+          <button class="btn small" id="addAppt">Add</button>
+        </div>
+        <ul id="appts" class="list"></ul>
+      </div>
+
+      <!-- Health tracker (editable locally) -->
+      <div class="card">
+        <h3>Health Tracker — Respiratory Viruses</h3>
+        <p class="muted" style="margin-top:-6px;margin-bottom:10px">Edit and save local % positivity for quick viewing. No external API required.</p>
+
+        <div class="health-grid">
+          <div class="health-card">
+            <div class="muted">COVID-19</div>
+            <div class="pct" id="covidPct">—</div>
+            <div style="margin-top:8px"><input id="covidInput" placeholder="e.g. 7.2" /></div>
+          </div>
+          <div class="health-card">
+            <div class="muted">Influenza</div>
+            <div class="pct" id="fluPct">—</div>
+            <div style="margin-top:8px"><input id="fluInput" placeholder="e.g. 1.3" /></div>
+          </div>
+          <div class="health-card">
+            <div class="muted">RSV</div>
+            <div class="pct" id="rsvPct">—</div>
+            <div style="margin-top:8px"><input id="rsvInput" placeholder="e.g. 2.6" /></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+          <button class="btn small" id="saveHealth">Save</button>
+          <button class="btn small" id="sampleHealth">Use Sample</button>
+        </div>
+      </div>
+
+      <!-- Weather -->
+      <div class="card">
+        <h3>Weather (Open-Meteo — free)</h3>
+        <div class="weather">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div>
+                <div id="locName" style="font-weight:700">Location</div>
+                <div id="weatherDesc" class="muted">—</div>
+              </div>
+              <div id="tempNow" style="font-size:28px;font-weight:700">—</div>
+            </div>
+            <div class="hourly" id="hourly"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn small" id="useGeo">Use my location</button>
+          <input id="lat" placeholder="Lat" style="width:120px" />
+          <input id="lon" placeholder="Lon" style="width:120px" />
+          <button class="btn small" id="fetchWeather">Fetch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div>
+      <!-- News -->
+      <div class="card">
+        <h3>News — Top (CBC)</h3>
+        <p class="muted" style="margin-top:-6px;margin-bottom:8px">Powered by RSS → JSON (rss2json). No key required.</p>
+        <ul id="news" class="list"></ul>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+          <input id="newsSource" placeholder="RSS feed (optional)" style="flex:1" />
+          <button class="btn small" id="fetchNews">Refresh</button>
+        </div>
+      </div>
+
+      <!-- Favorites -->
+      <div class="card">
+        <h3>Favorites</h3>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="newCat" placeholder="New category" />
+          <button class="btn small" id="addCat">Add</button>
+        </div>
+        <div id="favBox"></div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:12px 0" />
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="catSelect"></select>
+          <input id="favTitle" placeholder="Title" />
+          <input id="favUrl" placeholder="https://..." style="flex:1" />
+          <button class="btn small" id="addFav">Add</button>
+        </div>
+      </div>
+
+      <!-- Quick notes -->
+      <div class="card" style="margin-top:12px">
+        <h3>Quick Info</h3>
+        <p class="muted">This dashboard uses only free/no-signup services: Open-Meteo (weather) and RSS → JSON for news. Health data is local/editable.</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ========== Helpers ========== */
+const $ = sel => document.querySelector(sel);
+const qs = sel => document.querySelectorAll(sel);
+const save = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+const load = (k,d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch(e){return d} }
+
+/* ========== Date & Greeting ========== */
+function updateDate(){
+  const d = new Date();
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  $('#greet').textContent = `Hello — ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+  $('#dateStr').textContent = d.toLocaleDateString(undefined, opts);
+}
+updateDate(); setInterval(updateDate,60000);
+
+/* ========== Theme ========== */
+const MODE_KEY = 'dash-mode';
+const modeToggle = $('#modeToggle');
+const applyMode = (m) => {
+  if(m==='light') document.documentElement.classList.add('light');
+  else document.documentElement.classList.remove('light');
+  save(MODE_KEY, m);
+};
+const savedMode = load(MODE_KEY,'dark'); applyMode(savedMode);
+modeToggle.checked = savedMode === 'light';
+modeToggle.addEventListener('change', (e)=> applyMode(e.target.checked ? 'light' : 'dark'));
+
+/* ========== Notes ========== */
+$('#notes').value = load('dash-notes','');
+$('#saveNotes').addEventListener('click', ()=> { save('dash-notes',$('#notes').value); toast('Notes saved'); });
+
+/* ========== Todos ========== */
+let todos = load('dash-todos', []);
+function renderTodos(){
+  const ul = $('#todos'); ul.innerHTML='';
+  todos.forEach((t,i)=>{
+    const li = document.createElement('li'); li.className='item';
+    const left = document.createElement('div'); left.className='left';
+    const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = !!t.done;
+    cb.addEventListener('change', ()=> { todos[i].done = cb.checked; save('dash-todos', todos); renderTodos(); });
+    const span = document.createElement('div'); span.textContent = t.text; span.className = 'title' + (t.done ? ' done' : '');
+    left.appendChild(cb); left.appendChild(span);
+    const btn = document.createElement('button'); btn.className='mutebtn'; btn.textContent='✕';
+    btn.addEventListener('click', ()=> { todos.splice(i,1); save('dash-todos',todos); renderTodos(); });
+    li.appendChild(left); li.appendChild(btn); ul.appendChild(li);
+  });
+}
+$('#addTodo').addEventListener('click', ()=>{
+  const v = $('#todoInput').value.trim(); if(!v) return;
+  todos.unshift({text:v, done:false, created:Date.now()});
+  $('#todoInput').value=''; save('dash-todos',todos); renderTodos();
+});
+$('#todoInput').addEventListener('keydown', e=> { if(e.key==='Enter') $('#addTodo').click(); });
+renderTodos();
+
+/* ========== Appointments ========== */
+let appts = load('dash-appts', []);
+function renderAppts(){
+  const ul = $('#appts'); ul.innerHTML='';
+  appts.sort((a,b)=> new Date(a.time)-new Date(b.time));
+  appts.forEach((a,i)=>{
+    const li = document.createElement('li'); li.className='item';
+    const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column';
+    const title = document.createElement('div'); title.textContent = a.title; title.style.fontWeight='600';
+    const t = document.createElement('div'); t.className='muted'; t.style.fontSize='12px'; t.textContent = new Date(a.time).toLocaleString();
+    left.appendChild(title); left.appendChild(t);
+    const btn = document.createElement('button'); btn.className='mutebtn'; btn.textContent='Delete';
+    btn.addEventListener('click', ()=> { appts.splice(i,1); save('dash-appts',appts); renderAppts(); });
+    li.appendChild(left); li.appendChild(btn); ul.appendChild(li);
+  });
+}
+$('#addAppt').addEventListener('click', ()=>{
+  const t = $('#apptTitle').value.trim(); const time = $('#apptTime').value;
+  if(!t || !time) return toast('Title and time required');
+  appts.push({title:t, time}); $('#apptTitle').value=''; $('#apptTime').value=''; save('dash-appts',appts); renderAppts();
+});
+renderAppts();
+
+/* ========== Favorites (categories + links) ========== */
+let favs = load('dash-favs', { 'Work Tools':[ {title:'GitHub', url:'https://github.com'} ], 'Games':[ {title:'Lichess', url:'https://lichess.org'} ] });
+function rebuildFavs(){
+  const box = $('#favBox'); box.innerHTML=''; $('#catSelect').innerHTML='';
+  Object.keys(favs).forEach(cat=>{
+    const wrap = document.createElement('div'); wrap.style.marginBottom='10px';
+    const head = document.createElement('div'); head.style.display='flex'; head.style.justifyContent='space-between'; head.style.alignItems='center';
+    const title = document.createElement('div'); title.style.fontWeight='700'; title.textContent=cat;
+    const actions = document.createElement('div');
+    const collapse = document.createElement('button'); collapse.className='mutebtn'; collapse.textContent='Collapse';
+    const del = document.createElement('button'); del.className='mutebtn'; del.textContent='Delete';
+    actions.appendChild(collapse); actions.appendChild(del);
+    head.appendChild(title); head.appendChild(actions);
+    const links = document.createElement('div'); links.className='fav-links';
+    favs[cat].forEach((f,i)=>{
+      const a = document.createElement('a'); a.className='fav-link'; a.href=f.url; a.target='_blank'; a.textContent=f.title;
+      const x = document.createElement('button'); x.className='mutebtn'; x.textContent='✕';
+      x.addEventListener('click', ev=>{ ev.preventDefault(); favs[cat].splice(i,1); save('dash-favs',favs); rebuildFavs(); });
+      const frag = document.createElement('span'); frag.style.display='inline-flex'; frag.style.alignItems='center'; frag.appendChild(a); frag.appendChild(x);
+      links.appendChild(frag);
+    });
+    collapse.addEventListener('click', ()=> links.style.display = links.style.display === 'none' ? 'flex' : 'none');
+    del.addEventListener('click', ()=> { if(confirm('Delete category "'+cat+'"?')){ delete favs[cat]; save('dash-favs',favs); rebuildFavs(); } });
+    wrap.appendChild(head); wrap.appendChild(links); box.appendChild(wrap);
+    const opt = document.createElement('option'); opt.value=cat; opt.textContent=cat; $('#catSelect').appendChild(opt);
+  });
+}
+$('#addCat').addEventListener('click', ()=> {
+  const c = $('#newCat').value.trim(); if(!c) return; if(!favs[c]) favs[c]=[]; $('#newCat').value=''; save('dash-favs',favs); rebuildFavs();
+});
+$('#addFav').addEventListener('click', ()=>{
+  const cat = $('#catSelect').value || Object.keys(favs)[0]; const t = $('#favTitle').value.trim(); const u = $('#favUrl').value.trim();
+  if(!u) return toast('URL required');
+  favs[cat].push({title: t || u, url:u}); $('#favTitle').value=''; $('#favUrl').value=''; save('dash-favs',favs); rebuildFavs();
+});
+rebuildFavs();
+
+/* ========== News (rss2json + CBC default) ========== */
+async function fetchNews(){
+  const feed = $('#newsSource').value.trim() || 'https://www.cbc.ca/cmlink/rss-topstories';
+  $('#news').innerHTML = '<li class="item muted">Loading news…</li>';
+  try{
+    const url = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(feed);
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('fetch failed');
+    const json = await res.json();
+    const items = (json.items || []).slice(0,6);
+    renderNews(items);
+  }catch(e){
+    console.error(e);
+    $('#news').innerHTML = '<li class="item muted">Unable to fetch news. Try different RSS feed (e.g., BBC, Reuters, CBC) or check CORS/network.</li>';
+  }
+}
+function renderNews(items){
+  $('#news').innerHTML = '';
+  items.forEach(it=>{
+    const li = document.createElement('li'); li.className='item';
+    const a = document.createElement('a'); a.href = it.link; a.target='_blank'; a.style.color='inherit';
+    a.innerHTML = `<div style="font-weight:600">${it.title}</div><div class="muted" style="font-size:12px">${it.pubDate ? new Date(it.pubDate).toLocaleString() : ''}</div>`;
+    li.appendChild(a); $('#news').appendChild(li);
+  });
+}
+$('#fetchNews').addEventListener('click', fetchNews);
+fetchNews();
+
+/* ========== Weather (Open-Meteo, no key) ========== */
+async function fetchWeather(lat, lon){
+  $('#locName').textContent = `Lat ${lat.toFixed(3)}, Lon ${lon.toFixed(3)}`;
+  $('#weatherDesc').textContent = 'Fetching…'; $('#tempNow').textContent='—';
+  try{
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,precipitation_probability&timezone=${encodeURIComponent(tz)}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('weather fail');
+    const data = await res.json();
+    const cur = data.current_weather;
+    $('#tempNow').textContent = Math.round(cur.temperature) + '°C';
+    $('#weatherDesc').textContent = 'Wind ' + Math.round(cur.windspeed) + ' km/h';
+    // hourly slice
+    const times = data.hourly.time; const temps = data.hourly.temperature_2m; const pops = data.hourly.precipitation_probability || [];
+    const now = Date.now(); let idx = times.findIndex(t => new Date(t).getTime() >= now); if(idx<0) idx=0;
+    const hh = $('#hourly'); hh.innerHTML='';
+    for(let i=idx; i<Math.min(idx+6, times.length); i++){
+      const div = document.createElement('div'); div.className='hour';
+      const d = new Date(times[i]);
+      div.innerHTML = `<div style="font-size:12px">${d.toLocaleTimeString([], {hour:'numeric'})}</div>
+                       <div style="font-weight:700">${Math.round(temps[i])}°</div>
+                       <div class="muted" style="font-size:12px">${Math.round(pops[i]||0)}%</div>`;
+      hh.appendChild(div);
+    }
+  }catch(e){
+    console.error(e);
+    $('#weatherDesc').textContent = 'Unable to fetch weather';
+  }
+}
+$('#fetchWeather').addEventListener('click', ()=> {
+  const lat = parseFloat($('#lat').value), lon = parseFloat($('#lon').value);
+  if(isNaN(lat) || isNaN(lon)) return toast('Provide valid lat & lon or use geolocation');
+  save('dash-lat', lat); save('dash-lon', lon); fetchWeather(lat, lon);
+});
+$('#useGeo').addEventListener('click', ()=>{
+  if(!navigator.geolocation) return toast('Geolocation not available');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    $('#lat').value = pos.coords.latitude.toFixed(4);
+    $('#lon').value = pos.coords.longitude.toFixed(4);
+    fetchWeather(pos.coords.latitude, pos.coords.longitude);
+    save('dash-lat', pos.coords.latitude); save('dash-lon', pos.coords.longitude);
+  }, ()=> toast('Geolocation denied or unavailable'));
+});
+const latS = load('dash-lat', null), lonS = load('dash-lon', null);
+if(latS && lonS){ $('#lat').value = latS; $('#lon').value = lonS; fetchWeather(latS, lonS); }
+
+/* ========== Health (local editable) ========== */
+const HEALTH_KEY = 'dash-health';
+const sample = { updated: new Date().toISOString().slice(0,10), covid:7.2, influenza:0.5, rsv:2.3 };
+let health = load(HEALTH_KEY, sample);
+function renderHealth(){
+  $('#covidPct').textContent = (health.covid !== undefined) ? health.covid + '%' : '—';
+  $('#fluPct').textContent = (health.influenza !== undefined) ? health.influenza + '%' : '—';
+  $('#rsvPct').textContent = (health.rsv !== undefined) ? health.rsv + '%' : '—';
+  $('#covidInput').value = health.covid ?? '';
+  $('#fluInput').value = health.influenza ?? '';
+  $('#rsvInput').value = health.rsv ?? '';
+}
+$('#saveHealth').addEventListener('click', ()=>{
+  const c = parseFloat($('#covidInput').value), f = parseFloat($('#fluInput').value), r = parseFloat($('#rsvInput').value);
+  health = { updated: new Date().toISOString().slice(0,10), covid: isNaN(c) ? null : c, influenza: isNaN(f) ? null : f, rsv: isNaN(r) ? null : r };
+  save(HEALTH_KEY, health); renderHealth(); toast('Health data saved locally');
+});
+$('#sampleHealth').addEventListener('click', ()=> { health = sample; save(HEALTH_KEY, health); renderHealth(); toast('Sample health data loaded'); });
+renderHealth();
+
+/* ========== Reset button ========== */
+$('#resetBtn').addEventListener('click', ()=>{
+  if(!confirm('Reset local dashboard data (notes, todos, appts, favs, health)?')) return;
+  localStorage.removeItem('dash-notes'); localStorage.removeItem('dash-todos'); localStorage.removeItem('dash-appts');
+  localStorage.removeItem('dash-favs'); localStorage.removeItem('dash-health'); localStorage.removeItem('dash-lat'); localStorage.removeItem('dash-lon');
+  location.reload();
+});
+
+/* ========== Simple toast ========== */
+let toastTimer=null;
+function toast(msg, ms=1800){
+  let t = document.getElementById('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast'; t.style.position='fixed'; t.style.right='18px'; t.style.bottom='18px'; t.style.padding='10px 14px'; t.style.borderRadius='10px'; t.style.background='rgba(0,0,0,0.6)'; t.style.color='white'; t.style.zIndex=9999; document.body.appendChild(t); }
+  t.textContent = msg; t.style.display='block';
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.style.display='none', ms);
+}
+
+/* Save notes on unload */
+window.addEventListener('beforeunload', ()=> save('dash-notes', $('#notes').value));
+</script>
+</body>
+</html>
